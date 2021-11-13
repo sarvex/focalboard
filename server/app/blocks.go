@@ -52,7 +52,7 @@ func (a *App) PatchBlock(c store.Container, blockID string, blockPatch *model.Bl
 	if err != nil {
 		return nil
 	}
-	a.wsAdapter.BroadcastBlockChange(c.WorkspaceID, *block)
+	a.wsAdapter.BroadcastBlockChange(c.TeamID, *block)
 	go func() {
 		a.webhook.NotifyUpdate(*block)
 		a.notifyBlockChanged(notify.Update, c, block, oldBlock, userID)
@@ -63,7 +63,7 @@ func (a *App) PatchBlock(c store.Container, blockID string, blockPatch *model.Bl
 func (a *App) InsertBlock(c store.Container, block model.Block, userID string) error {
 	err := a.store.InsertBlock(c, &block, userID)
 	if err == nil {
-		a.wsAdapter.BroadcastBlockChange(c.WorkspaceID, block)
+		a.wsAdapter.BroadcastBlockChange(c.TeamID, block)
 		a.metrics.IncrementBlocksInserted(1)
 		go func() {
 			a.webhook.NotifyUpdate(block)
@@ -80,10 +80,12 @@ func (a *App) InsertBlocks(c store.Container, blocks []model.Block, userID strin
 		if err != nil {
 			return nil, err
 		}
-		blocks[i].WorkspaceID = c.WorkspaceID
+		// ToDo: the block should come with its BoardID already, and
+		// should be validated accordingly
+		// blocks[i].TeamID = c.TeamID
 		needsNotify = append(needsNotify, blocks[i])
 
-		a.wsAdapter.BroadcastBlockChange(c.WorkspaceID, blocks[i])
+		a.wsAdapter.BroadcastBlockChange(c.TeamID, blocks[i])
 		a.metrics.IncrementBlocksInserted(1)
 	}
 
@@ -124,7 +126,7 @@ func (a *App) DeleteBlock(c store.Container, blockID string, modifiedBy string) 
 		return err
 	}
 
-	a.wsAdapter.BroadcastBlockDelete(c.WorkspaceID, blockID, block.ParentID)
+	a.wsAdapter.BroadcastBlockDelete(c.TeamID, blockID, block.ParentID)
 	a.metrics.IncrementBlocksDeleted(1)
 	go func() {
 		a.notifyBlockChanged(notify.Update, c, block, block, modifiedBy)
@@ -150,7 +152,8 @@ func (a *App) notifyBlockChanged(action notify.Action, c store.Container, block 
 
 	evt := notify.BlockChangeEvent{
 		Action:       action,
-		Workspace:    c.WorkspaceID,
+		// ToDo: maybe update this event too?
+		// Team:         c.TeamID,
 		Board:        board,
 		Card:         card,
 		BlockChanged: block,

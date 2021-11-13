@@ -302,7 +302,9 @@ func (pa *PluginAdapter) WebSocketMessageHasBeenPosted(webConnID, userID string,
 			"workspaceID", command.WorkspaceID,
 		)
 
-		if !pa.auth.DoesUserHaveWorkspaceAccess(userID, command.WorkspaceID) {
+		// ToDo: command.WorkspaceID -> command.TeamID
+
+		if !pa.auth.DoesUserHaveTeamAccess(userID, command.WorkspaceID) {
 			return
 		}
 
@@ -360,9 +362,10 @@ func (pa *PluginAdapter) sendWorkspaceMessage(workspaceID string, payload map[st
 	pa.sendWorkspaceMessageSkipCluster(workspaceID, payload)
 }
 
-func (pa *PluginAdapter) BroadcastBlockChange(workspaceID string, block model.Block) {
+func (pa *PluginAdapter) BroadcastBlockChange(teamID string, block model.Block) {
 	pa.api.LogInfo("BroadcastingBlockChange",
-		"workspaceID", workspaceID,
+		"teamID", teamID,
+		"boardID", block.BoardID,
 		"blockID", block.ID,
 	)
 
@@ -371,17 +374,21 @@ func (pa *PluginAdapter) BroadcastBlockChange(workspaceID string, block model.Bl
 		Block:  block,
 	}
 
-	pa.sendWorkspaceMessage(workspaceID, utils.StructToMap(message))
+	// ToDo: sendTeamMessage
+	pa.sendWorkspaceMessage(teamID, utils.StructToMap(message))
 }
 
-func (pa *PluginAdapter) BroadcastBlockDelete(workspaceID, blockID, parentID string) {
+// ToDo: update to be based on board
+func (pa *PluginAdapter) BroadcastBlockDelete(teamID, blockID, parentID string) {
 	now := utils.GetMillis()
 	block := model.Block{}
 	block.ID = blockID
 	block.ParentID = parentID
 	block.UpdateAt = now
 	block.DeleteAt = now
-	block.WorkspaceID = workspaceID
+	// ToDo: necessary? removed now that it's based on boards?
+	// probably not, boardID will be required as a parameter
+	// block.WorkspaceID = workspaceID
 
-	pa.BroadcastBlockChange(workspaceID, block)
+	pa.BroadcastBlockChange(teamID, block)
 }

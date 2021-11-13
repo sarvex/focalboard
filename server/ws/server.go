@@ -231,7 +231,8 @@ func (ws *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				// if not in single user mode validate that the session
 				// has permissions to the workspace
 			} else {
-				if !ws.auth.DoesUserHaveWorkspaceAccess(wsSession.userID, command.WorkspaceID) {
+				// ToDo: command.WorkspaceID -> command.TeamID
+				if !ws.auth.DoesUserHaveTeamAccess(wsSession.userID, command.WorkspaceID) {
 					continue
 				}
 			}
@@ -257,7 +258,8 @@ func (ws *Server) isCommandReadTokenValid(command WebsocketCommand) bool {
 		return false
 	}
 
-	container := store.Container{WorkspaceID: command.WorkspaceID}
+	// ToDo: update for command.TeamID
+	container := store.Container{TeamID: command.WorkspaceID}
 
 	if len(command.ReadToken) != 0 && len(command.BlockIDs) != 0 {
 		// Read token must be valid for all block IDs
@@ -462,21 +464,24 @@ func (ws *Server) getListenersForWorkspace(workspaceID string) []*wsClient {
 	return ws.listenersByWorkspace[workspaceID]
 }
 
+// ToDo: update to be based on board
 // BroadcastBlockDelete broadcasts delete messages to clients.
-func (ws *Server) BroadcastBlockDelete(workspaceID, blockID, parentID string) {
+func (ws *Server) BroadcastBlockDelete(teamID, blockID, parentID string) {
 	now := utils.GetMillis()
 	block := model.Block{}
 	block.ID = blockID
 	block.ParentID = parentID
 	block.UpdateAt = now
 	block.DeleteAt = now
-	block.WorkspaceID = workspaceID
+	// ToDo: necessary? removed now that it's based on boards?
+	// probably not, boardID will be required as a parameter
+	// block.WorkspaceID = workspaceID
 
-	ws.BroadcastBlockChange(workspaceID, block)
+	ws.BroadcastBlockChange(teamID, block)
 }
 
 // BroadcastBlockChange broadcasts update messages to clients.
-func (ws *Server) BroadcastBlockChange(workspaceID string, block model.Block) {
+func (ws *Server) BroadcastBlockChange(teamID string, block model.Block) {
 	blockIDsToNotify := []string{block.ID, block.ParentID}
 
 	message := UpdateMsg{
@@ -484,10 +489,12 @@ func (ws *Server) BroadcastBlockChange(workspaceID string, block model.Block) {
 		Block:  block,
 	}
 
-	listeners := ws.getListenersForWorkspace(workspaceID)
+	// ToDo: getListenersForTeam
+	listeners := ws.getListenersForWorkspace(teamID)
 	ws.logger.Debug("listener(s) for workspaceID",
 		mlog.Int("listener_count", len(listeners)),
-		mlog.String("workspaceID", workspaceID),
+		mlog.String("teamID", teamID),
+		mlog.String("boardID", block.BoardID),
 	)
 
 	for _, blockID := range blockIDsToNotify {
@@ -500,7 +507,7 @@ func (ws *Server) BroadcastBlockChange(workspaceID string, block model.Block) {
 
 	for _, listener := range listeners {
 		ws.logger.Debug("Broadcast change",
-			mlog.String("workspaceID", workspaceID),
+			mlog.String("teamID", teamID),
 			mlog.String("blockID", block.ID),
 			mlog.Stringer("remoteAddr", listener.RemoteAddr()),
 		)

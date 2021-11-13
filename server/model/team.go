@@ -1,13 +1,13 @@
 package model
 
-// Workspace is information global to a workspace
+// Team is information global to a team
 // swagger:model
-type Workspace struct {
-	// ID of the workspace
+type Team struct {
+	// ID of the team
 	// required: true
 	ID string `json:"id"`
 
-	// Title of the workspace
+	// Title of the team
 	// required: false
 	Title string `json:"title"`
 
@@ -15,7 +15,7 @@ type Workspace struct {
 	// required: true
 	SignupToken string `json:"signupToken"`
 
-	// Workspace settings
+	// Team settings
 	// required: false
 	Settings map[string]interface{} `json:"settings"`
 
@@ -28,18 +28,19 @@ type Workspace struct {
 	UpdateAt int64 `json:"updateAt"`
 }
 
-// UserWorkspace is a summary of a single association between
-// a user and a workspace
+// ToDo: should we maintain this struct??
+// UserTeam is a summary of a single association between
+// a user and a team
 // swagger:model
-type UserWorkspace struct {
-	// ID of the workspace
+type UserTeam struct {
+	// ID of the team
 	// required: true
 	ID string `json:"id"`
 
-	// Title of the workspace
+	// Title of the team
 	// required: false
 	Title string `json:"title"`
 
-	// Number of boards in the workspace
+	// Number of boards in the team
 	BoardCount int `json:"boardCount"`
 }

@@ -14,7 +14,7 @@ import (
 type AuthInterface interface {
 	GetSession(token string) (*model.Session, error)
 	IsValidReadToken(c store.Container, blockID string, readToken string) (bool, error)
-	DoesUserHaveWorkspaceAccess(userID string, workspaceID string) bool
+	DoesUserHaveTeamAccess(userID string, teamID string) bool
 }
 
 // Auth authenticates sessions.
@@ -66,8 +66,8 @@ func (a *Auth) IsValidReadToken(c store.Container, blockID string, readToken str
 	return false, nil
 }
 
-func (a *Auth) DoesUserHaveWorkspaceAccess(userID string, workspaceID string) bool {
-	hasAccess, err := a.store.HasWorkspaceAccess(userID, workspaceID)
+func (a *Auth) DoesUserHaveTeamAccess(userID string, teamID string) bool {
+	hasAccess, err := a.store.HasTeamAccess(userID, teamID)
 	if err != nil {
 		return false
 	}

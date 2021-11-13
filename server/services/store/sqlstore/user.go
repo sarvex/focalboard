@@ -196,7 +196,7 @@ func (s *SQLStore) updateUserPasswordByID(db sq.BaseRunner, userID, password str
 	return nil
 }
 
-func (s *SQLStore) getUsersByWorkspace(db sq.BaseRunner, _ string) ([]*model.User, error) {
+func (s *SQLStore) getUsersByTeam(db sq.BaseRunner, _ string) ([]*model.User, error) {
 	return s.getUsersByCondition(db, nil)
 }
 

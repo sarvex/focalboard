@@ -7,7 +7,7 @@ import "github.com/mattermost/focalboard/server/model"
 // Conainer represents a container in a store
 // Using a struct to make extending this easier in the future.
 type Container struct {
-	WorkspaceID string
+	TeamID string
 }
 
 // Store represents the abstraction of the data storage.
@@ -44,7 +44,7 @@ type Store interface {
 	UpdateUser(user *model.User) error
 	UpdateUserPassword(username, password string) error
 	UpdateUserPasswordByID(userID, password string) error
-	GetUsersByWorkspace(workspaceID string) ([]*model.User, error)
+	GetUsersByTeam(teamID string) ([]*model.User, error)
 
 	GetActiveUserCount(updatedSecondsAgo int64) (int, error)
 	GetSession(token string, expireTime int64) (*model.Session, error)
@@ -57,10 +57,10 @@ type Store interface {
 	UpsertSharing(c Container, sharing model.Sharing) error
 	GetSharing(c Container, rootID string) (*model.Sharing, error)
 
-	UpsertWorkspaceSignupToken(workspace model.Workspace) error
-	UpsertWorkspaceSettings(workspace model.Workspace) error
-	GetWorkspace(ID string) (*model.Workspace, error)
-	HasWorkspaceAccess(userID string, workspaceID string) (bool, error)
-	GetWorkspaceCount() (int64, error)
-	GetUserWorkspaces(userID string) ([]model.UserWorkspace, error)
+	UpsertTeamSignupToken(team model.Team) error
+	UpsertTeamSettings(team model.Team) error
+	GetTeam(ID string) (*model.Team, error)
+	HasTeamAccess(userID string, teamID string) (bool, error)
+	GetTeamCount() (int64, error)
+	GetUserTeams(userID string) ([]model.UserTeam, error)
 }

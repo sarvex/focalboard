@@ -29,8 +29,8 @@ const (
 )
 
 const (
-	ErrorNoWorkspaceCode    = 1000
-	ErrorNoWorkspaceMessage = "No workspace"
+	ErrorNoTeamCode    = 1000
+	ErrorNoTeamMessage = "No team"
 )
 
 type PermissionError struct {
@@ -67,21 +67,21 @@ func (a *API) RegisterRoutes(r *mux.Router) {
 	apiv1 := r.PathPrefix("/api/v1").Subrouter()
 	apiv1.Use(a.requireCSRFToken)
 
-	apiv1.HandleFunc("/workspaces/{workspaceID}/blocks", a.sessionRequired(a.handleGetBlocks)).Methods("GET")
-	apiv1.HandleFunc("/workspaces/{workspaceID}/blocks", a.sessionRequired(a.handlePostBlocks)).Methods("POST")
-	apiv1.HandleFunc("/workspaces/{workspaceID}/blocks/{blockID}", a.sessionRequired(a.handleDeleteBlock)).Methods("DELETE")
-	apiv1.HandleFunc("/workspaces/{workspaceID}/blocks/{blockID}", a.sessionRequired(a.handlePatchBlock)).Methods("PATCH")
-	apiv1.HandleFunc("/workspaces/{workspaceID}/blocks/{blockID}/subtree", a.attachSession(a.handleGetSubTree, false)).Methods("GET")
+	apiv1.HandleFunc("/teams/{teamID}/blocks", a.sessionRequired(a.handleGetBlocks)).Methods("GET")
+	apiv1.HandleFunc("/teams/{teamID}/blocks", a.sessionRequired(a.handlePostBlocks)).Methods("POST")
+	apiv1.HandleFunc("/teams/{teamID}/blocks/{blockID}", a.sessionRequired(a.handleDeleteBlock)).Methods("DELETE")
+	apiv1.HandleFunc("/teams/{teamID}/blocks/{blockID}", a.sessionRequired(a.handlePatchBlock)).Methods("PATCH")
+	apiv1.HandleFunc("/teams/{teamID}/blocks/{blockID}/subtree", a.attachSession(a.handleGetSubTree, false)).Methods("GET")
 
-	apiv1.HandleFunc("/workspaces/{workspaceID}/blocks/export", a.sessionRequired(a.handleExport)).Methods("GET")
-	apiv1.HandleFunc("/workspaces/{workspaceID}/blocks/import", a.sessionRequired(a.handleImport)).Methods("POST")
+	apiv1.HandleFunc("/teams/{teamID}/blocks/export", a.sessionRequired(a.handleExport)).Methods("GET")
+	apiv1.HandleFunc("/teams/{teamID}/blocks/import", a.sessionRequired(a.handleImport)).Methods("POST")
 
-	apiv1.HandleFunc("/workspaces/{workspaceID}/sharing/{rootID}", a.sessionRequired(a.handlePostSharing)).Methods("POST")
-	apiv1.HandleFunc("/workspaces/{workspaceID}/sharing/{rootID}", a.sessionRequired(a.handleGetSharing)).Methods("GET")
+	apiv1.HandleFunc("/teams/{teamID}/sharing/{rootID}", a.sessionRequired(a.handlePostSharing)).Methods("POST")
+	apiv1.HandleFunc("/teams/{teamID}/sharing/{rootID}", a.sessionRequired(a.handleGetSharing)).Methods("GET")
 
-	apiv1.HandleFunc("/workspaces/{workspaceID}", a.sessionRequired(a.handleGetWorkspace)).Methods("GET")
-	apiv1.HandleFunc("/workspaces/{workspaceID}/regenerate_signup_token", a.sessionRequired(a.handlePostWorkspaceRegenerateSignupToken)).Methods("POST")
-	apiv1.HandleFunc("/workspaces/{workspaceID}/users", a.sessionRequired(a.getWorkspaceUsers)).Methods("GET")
+	apiv1.HandleFunc("/teams/{teamID}", a.sessionRequired(a.handleGetTeam)).Methods("GET")
+	apiv1.HandleFunc("/teams/{teamID}/regenerate_signup_token", a.sessionRequired(a.handlePostTeamRegenerateSignupToken)).Methods("POST")
+	apiv1.HandleFunc("/teams/{teamID}/users", a.sessionRequired(a.getTeamUsers)).Methods("GET")
 
 	// User APIs
 	apiv1.HandleFunc("/users/me", a.sessionRequired(a.handleGetMe)).Methods("GET")
@@ -92,14 +92,15 @@ func (a *API) RegisterRoutes(r *mux.Router) {
 	apiv1.HandleFunc("/register", a.handleRegister).Methods("POST")
 	apiv1.HandleFunc("/clientConfig", a.getClientConfig).Methods("GET")
 
-	apiv1.HandleFunc("/workspaces/{workspaceID}/{rootID}/files", a.sessionRequired(a.handleUploadFile)).Methods("POST")
+	apiv1.HandleFunc("/teams/{teamID}/{rootID}/files", a.sessionRequired(a.handleUploadFile)).Methods("POST")
 
-	apiv1.HandleFunc("/workspaces", a.sessionRequired(a.handleGetUserWorkspaces)).Methods("GET")
+	// ToDo: replace it? how?
+	// apiv1.HandleFunc("/teams", a.sessionRequired(a.handleGetUserTeams)).Methods("GET")
 
 	// Get Files API
 
 	files := r.PathPrefix("/files").Subrouter()
-	files.HandleFunc("/workspaces/{workspaceID}/{rootID}/{filename}", a.attachSession(a.handleServeFile, false)).Methods("GET")
+	files.HandleFunc("/teams/{teamID}/{rootID}/{filename}", a.attachSession(a.handleServeFile, false)).Methods("GET")
 }
 
 func (a *API) RegisterAdminRoutes(r *mux.Router) {
@@ -156,20 +157,20 @@ func (a *API) getContainerAllowingReadTokenForBlock(r *http.Request, blockID str
 	session, _ := ctx.Value(sessionContextKey).(*model.Session)
 
 	if a.MattermostAuth {
-		// Workspace auth
+		// Team auth
 		vars := mux.Vars(r)
-		workspaceID := vars["workspaceID"]
+		teamID := vars["teamID"]
 
 		container := store.Container{
-			WorkspaceID: workspaceID,
+			TeamID: teamID,
 		}
 
-		if workspaceID == "0" {
+		if teamID == "0" {
 			return &container, nil
 		}
 
-		// Has session and access to workspace
-		if session != nil && a.app.DoesUserHaveWorkspaceAccess(session.UserID, container.WorkspaceID) {
+		// Has session and access to team
+		if session != nil && a.app.DoesUserHaveTeamAccess(session.UserID, container.TeamID) {
 			return &container, nil
 		}
 
@@ -180,12 +181,12 @@ func (a *API) getContainerAllowingReadTokenForBlock(r *http.Request, blockID str
 			return &container, nil
 		}
 
-		return nil, PermissionError{"access denied to workspace"}
+		return nil, PermissionError{"access denied to team"}
 	}
 
-	// Native auth: always use root workspace
+	// Native auth: always use root team
 	container := store.Container{
-		WorkspaceID: "0",
+		TeamID: "0",
 	}
 
 	// Has session
@@ -198,7 +199,7 @@ func (a *API) getContainerAllowingReadTokenForBlock(r *http.Request, blockID str
 		return &container, nil
 	}
 
-	return nil, PermissionError{"access denied to workspace"}
+	return nil, PermissionError{"access denied to team"}
 }
 
 func (a *API) getContainer(r *http.Request) (*store.Container, error) {
@@ -206,7 +207,7 @@ func (a *API) getContainer(r *http.Request) (*store.Container, error) {
 }
 
 func (a *API) handleGetBlocks(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /api/v1/workspaces/{workspaceID}/blocks getBlocks
+	// swagger:operation GET /api/v1/teams/{teamID}/blocks getBlocks
 	//
 	// Returns blocks
 	//
@@ -214,9 +215,9 @@ func (a *API) handleGetBlocks(w http.ResponseWriter, r *http.Request) {
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// - name: parent_id
@@ -326,7 +327,7 @@ func stampModificationMetadata(r *http.Request, blocks []model.Block, auditRec *
 }
 
 func (a *API) handlePostBlocks(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /api/v1/workspaces/{workspaceID}/blocks updateBlocks
+	// swagger:operation POST /api/v1/teams/{teamID}/blocks updateBlocks
 	//
 	// Insert blocks. The specified IDs will only be used to link
 	// blocks with existing ones, the rest will be replaced by server
@@ -336,9 +337,9 @@ func (a *API) handlePostBlocks(w http.ResponseWriter, r *http.Request) {
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// - name: Body
@@ -541,7 +542,7 @@ func (a *API) handleGetMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) handleDeleteBlock(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation DELETE /api/v1/workspaces/{workspaceID}/blocks/{blockID} deleteBlock
+	// swagger:operation DELETE /api/v1/teams/{teamID}/blocks/{blockID} deleteBlock
 	//
 	// Deletes a block
 	//
@@ -549,9 +550,9 @@ func (a *API) handleDeleteBlock(w http.ResponseWriter, r *http.Request) {
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// - name: blockID
@@ -599,7 +600,7 @@ func (a *API) handleDeleteBlock(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) handlePatchBlock(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation PATCH /api/v1/workspaces/{workspaceID}/blocks/{blockID} patchBlock
+	// swagger:operation PATCH /api/v1/teams/{teamID}/blocks/{blockID} patchBlock
 	//
 	// Partially updates a block
 	//
@@ -607,9 +608,9 @@ func (a *API) handlePatchBlock(w http.ResponseWriter, r *http.Request) {
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// - name: blockID
@@ -676,7 +677,7 @@ func (a *API) handlePatchBlock(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) handleGetSubTree(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /api/v1/workspaces/{workspaceID}/blocks/{blockID}/subtree getSubTree
+	// swagger:operation GET /api/v1/teams/{teamID}/blocks/{blockID}/subtree getSubTree
 	//
 	// Returns the blocks of a subtree
 	//
@@ -684,9 +685,9 @@ func (a *API) handleGetSubTree(w http.ResponseWriter, r *http.Request) {
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// - name: blockID
@@ -764,7 +765,7 @@ func (a *API) handleGetSubTree(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) handleExport(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /api/v1/workspaces/{workspaceID}/blocks/export exportBlocks
+	// swagger:operation GET /api/v1/teams/{teamID}/blocks/export exportBlocks
 	//
 	// Returns all blocks
 	//
@@ -772,9 +773,9 @@ func (a *API) handleExport(w http.ResponseWriter, r *http.Request) {
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// security:
@@ -869,7 +870,7 @@ func filterOrphanBlocks(blocks []model.Block) (ret []model.Block) {
 }
 
 func (a *API) handleImport(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /api/v1/workspaces/{workspaceID}/blocks/import importBlocks
+	// swagger:operation POST /api/v1/teams/{teamID}/blocks/import importBlocks
 	//
 	// Import blocks
 	//
@@ -877,9 +878,9 @@ func (a *API) handleImport(w http.ResponseWriter, r *http.Request) {
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// - name: Body
@@ -943,7 +944,7 @@ func (a *API) handleImport(w http.ResponseWriter, r *http.Request) {
 // Sharing
 
 func (a *API) handleGetSharing(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /api/v1/workspaces/{workspaceID}/sharing/{rootID} getSharing
+	// swagger:operation GET /api/v1/teams/{teamID}/sharing/{rootID} getSharing
 	//
 	// Returns sharing information for a root block
 	//
@@ -951,9 +952,9 @@ func (a *API) handleGetSharing(w http.ResponseWriter, r *http.Request) {
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// - name: rootID
@@ -1014,7 +1015,7 @@ func (a *API) handleGetSharing(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) handlePostSharing(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /api/v1/workspaces/{workspaceID}/sharing/{rootID} postSharing
+	// swagger:operation POST /api/v1/teams/{teamID}/sharing/{rootID} postSharing
 	//
 	// Sets sharing information for a root block
 	//
@@ -1022,9 +1023,9 @@ func (a *API) handlePostSharing(w http.ResponseWriter, r *http.Request) {
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// - name: rootID
@@ -1094,20 +1095,20 @@ func (a *API) handlePostSharing(w http.ResponseWriter, r *http.Request) {
 	auditRec.Success()
 }
 
-// Workspace
+// Team
 
-func (a *API) handleGetWorkspace(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /api/v1/workspaces/{workspaceID} getWorkspace
+func (a *API) handleGetTeam(w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /api/v1/teams/{teamID} getTeam
 	//
-	// Returns information of the root workspace
+	// Returns information of the root team
 	//
 	// ---
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// security:
@@ -1116,68 +1117,68 @@ func (a *API) handleGetWorkspace(w http.ResponseWriter, r *http.Request) {
 	//   '200':
 	//     description: success
 	//     schema:
-	//       "$ref": "#/definitions/Workspace"
+	//       "$ref": "#/definitions/Team"
 	//   default:
 	//     description: internal error
 	//     schema:
 	//       "$ref": "#/definitions/ErrorResponse"
 
-	var workspace *model.Workspace
+	var team *model.Team
 	var err error
 
 	if a.MattermostAuth {
 		vars := mux.Vars(r)
-		workspaceID := vars["workspaceID"]
+		teamID := vars["teamID"]
 
 		ctx := r.Context()
 		session := ctx.Value(sessionContextKey).(*model.Session)
-		if !a.app.DoesUserHaveWorkspaceAccess(session.UserID, workspaceID) {
-			a.errorResponse(w, r.URL.Path, http.StatusUnauthorized, "user does not have workspace access", nil)
+		if !a.app.DoesUserHaveTeamAccess(session.UserID, teamID) {
+			a.errorResponse(w, r.URL.Path, http.StatusUnauthorized, "user does not have team access", nil)
 			return
 		}
 
-		workspace, err = a.app.GetWorkspace(workspaceID)
+		team, err = a.app.GetTeam(teamID)
 		if err != nil {
 			a.errorResponse(w, r.URL.Path, http.StatusInternalServerError, "", err)
 		}
-		if workspace == nil {
-			a.errorResponse(w, r.URL.Path, http.StatusUnauthorized, "invalid workspace", nil)
+		if team == nil {
+			a.errorResponse(w, r.URL.Path, http.StatusUnauthorized, "invalid team", nil)
 			return
 		}
 	} else {
-		workspace, err = a.app.GetRootWorkspace()
+		team, err = a.app.GetRootTeam()
 		if err != nil {
 			a.errorResponse(w, r.URL.Path, http.StatusInternalServerError, "", err)
 			return
 		}
 	}
 
-	auditRec := a.makeAuditRecord(r, "getWorkspace", audit.Fail)
+	auditRec := a.makeAuditRecord(r, "getTeam", audit.Fail)
 	defer a.audit.LogRecord(audit.LevelRead, auditRec)
-	auditRec.AddMeta("resultWorkspaceID", workspace.ID)
+	auditRec.AddMeta("resultTeamID", team.ID)
 
-	workspaceData, err := json.Marshal(workspace)
+	teamData, err := json.Marshal(team)
 	if err != nil {
 		a.errorResponse(w, r.URL.Path, http.StatusInternalServerError, "", err)
 		return
 	}
 
-	jsonBytesResponse(w, http.StatusOK, workspaceData)
+	jsonBytesResponse(w, http.StatusOK, teamData)
 	auditRec.Success()
 }
 
-func (a *API) handlePostWorkspaceRegenerateSignupToken(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /api/v1/workspaces/{workspaceID}/regenerate_signup_token regenerateSignupToken
+func (a *API) handlePostTeamRegenerateSignupToken(w http.ResponseWriter, r *http.Request) {
+	// swagger:operation POST /api/v1/teams/{teamID}/regenerate_signup_token regenerateSignupToken
 	//
-	// Regenerates the signup token for the root workspace
+	// Regenerates the signup token for the root team
 	//
 	// ---
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// security:
@@ -1190,7 +1191,7 @@ func (a *API) handlePostWorkspaceRegenerateSignupToken(w http.ResponseWriter, r 
 	//     schema:
 	//       "$ref": "#/definitions/ErrorResponse"
 
-	workspace, err := a.app.GetRootWorkspace()
+	team, err := a.app.GetRootTeam()
 	if err != nil {
 		a.errorResponse(w, r.URL.Path, http.StatusInternalServerError, "", err)
 		return
@@ -1199,9 +1200,9 @@ func (a *API) handlePostWorkspaceRegenerateSignupToken(w http.ResponseWriter, r 
 	auditRec := a.makeAuditRecord(r, "regenerateSignupToken", audit.Fail)
 	defer a.audit.LogRecord(audit.LevelModify, auditRec)
 
-	workspace.SignupToken = utils.NewID(utils.IDTypeToken)
+	team.SignupToken = utils.NewID(utils.IDTypeToken)
 
-	err = a.app.UpsertWorkspaceSignupToken(*workspace)
+	err = a.app.UpsertTeamSignupToken(*team)
 	if err != nil {
 		a.errorResponse(w, r.URL.Path, http.StatusInternalServerError, "", err)
 		return
@@ -1214,7 +1215,7 @@ func (a *API) handlePostWorkspaceRegenerateSignupToken(w http.ResponseWriter, r 
 // File upload
 
 func (a *API) handleServeFile(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /workspaces/{workspaceID}/{rootID}/{fileID} getFile
+	// swagger:operation GET /teams/{teamID}/{rootID}/{fileID} getFile
 	//
 	// Returns the contents of an uploaded file
 	//
@@ -1224,9 +1225,9 @@ func (a *API) handleServeFile(w http.ResponseWriter, r *http.Request) {
 	// - image/jpg
 	// - image/png
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// - name: rootID
@@ -1250,7 +1251,7 @@ func (a *API) handleServeFile(w http.ResponseWriter, r *http.Request) {
 	//       "$ref": "#/definitions/ErrorResponse"
 
 	vars := mux.Vars(r)
-	workspaceID := vars["workspaceID"]
+	teamID := vars["teamID"]
 	rootID := vars["rootID"]
 	filename := vars["filename"]
 
@@ -1275,7 +1276,7 @@ func (a *API) handleServeFile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", contentType)
 
-	fileReader, err := a.app.GetFileReader(workspaceID, rootID, filename)
+	fileReader, err := a.app.GetFileReader(teamID, rootID, filename)
 	if err != nil {
 		a.errorResponse(w, r.URL.Path, http.StatusInternalServerError, "", err)
 		return
@@ -1303,7 +1304,7 @@ func FileUploadResponseFromJSON(data io.Reader) (*FileUploadResponse, error) {
 }
 
 func (a *API) handleUploadFile(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation POST /api/v1/workspaces/{workspaceID}/{rootID}/files uploadFile
+	// swagger:operation POST /api/v1/teams/{teamID}/{rootID}/files uploadFile
 	//
 	// Upload a binary file, attached to a root block
 	//
@@ -1313,9 +1314,9 @@ func (a *API) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// - name: rootID
@@ -1340,7 +1341,7 @@ func (a *API) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 	//       "$ref": "#/definitions/ErrorResponse"
 
 	vars := mux.Vars(r)
-	workspaceID := vars["workspaceID"]
+	teamID := vars["teamID"]
 	rootID := vars["rootID"]
 
 	// Caller must have access to the root block's container
@@ -1362,7 +1363,7 @@ func (a *API) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 	auditRec.AddMeta("rootID", rootID)
 	auditRec.AddMeta("filename", handle.Filename)
 
-	fileID, err := a.app.SaveFile(file, workspaceID, rootID, handle.Filename)
+	fileID, err := a.app.SaveFile(file, teamID, rootID, handle.Filename)
 	if err != nil {
 		a.errorResponse(w, r.URL.Path, http.StatusInternalServerError, "", err)
 		return
@@ -1384,18 +1385,18 @@ func (a *API) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 	auditRec.Success()
 }
 
-func (a *API) getWorkspaceUsers(w http.ResponseWriter, r *http.Request) {
-	// swagger:operation GET /api/v1/workspaces/{workspaceID}/users getWorkspaceUsers
+func (a *API) getTeamUsers(w http.ResponseWriter, r *http.Request) {
+	// swagger:operation GET /api/v1/teams/{teamID}/users getTeamUsers
 	//
-	// Returns workspace users
+	// Returns team users
 	//
 	// ---
 	// produces:
 	// - application/json
 	// parameters:
-	// - name: workspaceID
+	// - name: teamID
 	//   in: path
-	//   description: Workspace ID
+	//   description: Team ID
 	//   required: true
 	//   type: string
 	// security:
@@ -1413,19 +1414,19 @@ func (a *API) getWorkspaceUsers(w http.ResponseWriter, r *http.Request) {
 	//       "$ref": "#/definitions/ErrorResponse"
 
 	vars := mux.Vars(r)
-	workspaceID := vars["workspaceID"]
+	teamID := vars["teamID"]
 
 	ctx := r.Context()
 	session := ctx.Value(sessionContextKey).(*model.Session)
-	if !a.app.DoesUserHaveWorkspaceAccess(session.UserID, workspaceID) {
-		a.errorResponse(w, r.URL.Path, http.StatusForbidden, "Access denied to workspace", PermissionError{"access denied to workspace"})
+	if !a.app.DoesUserHaveTeamAccess(session.UserID, teamID) {
+		a.errorResponse(w, r.URL.Path, http.StatusForbidden, "Access denied to team", PermissionError{"access denied to team"})
 		return
 	}
 
 	auditRec := a.makeAuditRecord(r, "getUsers", audit.Fail)
 	defer a.audit.LogRecord(audit.LevelRead, auditRec)
 
-	users, err := a.app.GetWorkspaceUsers(workspaceID)
+	users, err := a.app.GetTeamUsers(teamID)
 	if err != nil {
 		a.errorResponse(w, r.URL.Path, http.StatusInternalServerError, "", err)
 		return
@@ -1479,7 +1480,7 @@ func (a *API) errorResponseWithCode(w http.ResponseWriter, api string, statusCod
 }
 
 func (a *API) noContainerErrorResponse(w http.ResponseWriter, api string, sourceError error) {
-	a.errorResponseWithCode(w, api, http.StatusBadRequest, ErrorNoWorkspaceCode, ErrorNoWorkspaceMessage, sourceError)
+	a.errorResponseWithCode(w, api, http.StatusBadRequest, ErrorNoTeamCode, ErrorNoTeamMessage, sourceError)
 }
 
 func jsonStringResponse(w http.ResponseWriter, code int, message string) { //nolint:unparam
@@ -1492,22 +1493,4 @@ func jsonBytesResponse(w http.ResponseWriter, code int, json []byte) { //nolint:
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_, _ = w.Write(json)
-}
-
-func (a *API) handleGetUserWorkspaces(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	session := ctx.Value(sessionContextKey).(*model.Session)
-	userWorkspaces, err := a.app.GetUserWorkspaces(session.UserID)
-	if err != nil {
-		a.errorResponse(w, r.URL.Path, http.StatusInternalServerError, "", err)
-		return
-	}
-
-	data, err := json.Marshal(userWorkspaces)
-	if err != nil {
-		a.errorResponse(w, r.URL.Path, http.StatusInternalServerError, "", err)
-		return
-	}
-
-	jsonBytesResponse(w, http.StatusOK, data)
 }

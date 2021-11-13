@@ -17,11 +17,11 @@ var (
 	errUnsupportedOperation = errors.New("unsupported operation")
 )
 
-func (s *SQLStore) upsertWorkspaceSignupToken(db sq.BaseRunner, workspace model.Workspace) error {
+func (s *SQLStore) upsertTeamSignupToken(db sq.BaseRunner, team model.Team) error {
 	now := utils.GetMillis()
 
 	query := s.getQueryBuilder(db).
-		Insert(s.tablePrefix+"workspaces").
+		Insert(s.tablePrefix+"teams").
 		Columns(
 			"id",
 			"signup_token",
@@ -29,14 +29,14 @@ func (s *SQLStore) upsertWorkspaceSignupToken(db sq.BaseRunner, workspace model.
 			"update_at",
 		).
 		Values(
-			workspace.ID,
-			workspace.SignupToken,
-			workspace.ModifiedBy,
+			team.ID,
+			team.SignupToken,
+			team.ModifiedBy,
 			now,
 		)
 	if s.dbType == mysqlDBType {
 		query = query.Suffix("ON DUPLICATE KEY UPDATE signup_token = ?, modified_by = ?, update_at = ?",
-			workspace.SignupToken, workspace.ModifiedBy, now)
+			team.SignupToken, team.ModifiedBy, now)
 	} else {
 		query = query.Suffix(
 			`ON CONFLICT (id)
@@ -48,17 +48,17 @@ func (s *SQLStore) upsertWorkspaceSignupToken(db sq.BaseRunner, workspace model.
 	return err
 }
 
-func (s *SQLStore) upsertWorkspaceSettings(db sq.BaseRunner, workspace model.Workspace) error {
+func (s *SQLStore) upsertTeamSettings(db sq.BaseRunner, team model.Team) error {
 	now := utils.GetMillis()
 	signupToken := utils.NewID(utils.IDTypeToken)
 
-	settingsJSON, err := json.Marshal(workspace.Settings)
+	settingsJSON, err := json.Marshal(team.Settings)
 	if err != nil {
 		return err
 	}
 
 	query := s.getQueryBuilder(db).
-		Insert(s.tablePrefix+"workspaces").
+		Insert(s.tablePrefix+"teams").
 		Columns(
 			"id",
 			"signup_token",
@@ -67,14 +67,14 @@ func (s *SQLStore) upsertWorkspaceSettings(db sq.BaseRunner, workspace model.Wor
 			"update_at",
 		).
 		Values(
-			workspace.ID,
+			team.ID,
 			signupToken,
 			settingsJSON,
-			workspace.ModifiedBy,
+			team.ModifiedBy,
 			now,
 		)
 	if s.dbType == mysqlDBType {
-		query = query.Suffix("ON DUPLICATE KEY UPDATE settings = ?, modified_by = ?, update_at = ?", settingsJSON, workspace.ModifiedBy, now)
+		query = query.Suffix("ON DUPLICATE KEY UPDATE settings = ?, modified_by = ?, update_at = ?", settingsJSON, team.ModifiedBy, now)
 	} else {
 		query = query.Suffix(
 			`ON CONFLICT (id)
@@ -86,7 +86,7 @@ func (s *SQLStore) upsertWorkspaceSettings(db sq.BaseRunner, workspace model.Wor
 	return err
 }
 
-func (s *SQLStore) getWorkspace(db sq.BaseRunner, id string) (*model.Workspace, error) {
+func (s *SQLStore) getTeam(db sq.BaseRunner, id string) (*model.Team, error) {
 	var settingsJSON string
 
 	query := s.getQueryBuilder(db).
@@ -97,45 +97,45 @@ func (s *SQLStore) getWorkspace(db sq.BaseRunner, id string) (*model.Workspace, 
 			"modified_by",
 			"update_at",
 		).
-		From(s.tablePrefix + "workspaces").
+		From(s.tablePrefix + "teams").
 		Where(sq.Eq{"id": id})
 	row := query.QueryRow()
-	workspace := model.Workspace{}
+	team := model.Team{}
 
 	err := row.Scan(
-		&workspace.ID,
-		&workspace.SignupToken,
+		&team.ID,
+		&team.SignupToken,
 		&settingsJSON,
-		&workspace.ModifiedBy,
-		&workspace.UpdateAt,
+		&team.ModifiedBy,
+		&team.UpdateAt,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal([]byte(settingsJSON), &workspace.Settings)
+	err = json.Unmarshal([]byte(settingsJSON), &team.Settings)
 	if err != nil {
-		s.logger.Error(`ERROR GetWorkspace settings json.Unmarshal`, mlog.Err(err))
+		s.logger.Error(`ERROR GetTeam settings json.Unmarshal`, mlog.Err(err))
 		return nil, err
 	}
 
-	return &workspace, nil
+	return &team, nil
 }
 
-func (s *SQLStore) hasWorkspaceAccess(db sq.BaseRunner, userID string, workspaceID string) (bool, error) {
+func (s *SQLStore) hasTeamAccess(db sq.BaseRunner, userID string, teamID string) (bool, error) {
 	return true, nil
 }
 
-func (s *SQLStore) getWorkspaceCount(db sq.BaseRunner) (int64, error) {
+func (s *SQLStore) getTeamCount(db sq.BaseRunner) (int64, error) {
 	query := s.getQueryBuilder(db).
 		Select(
 			"COUNT(*) AS count",
 		).
-		From(s.tablePrefix + "workspaces")
+		From(s.tablePrefix + "teams")
 
 	rows, err := query.Query()
 	if err != nil {
-		s.logger.Error("ERROR GetWorkspaceCount", mlog.Err(err))
+		s.logger.Error("ERROR GetTeamCount", mlog.Err(err))
 		return 0, err
 	}
 	defer s.CloseRows(rows)
@@ -145,12 +145,13 @@ func (s *SQLStore) getWorkspaceCount(db sq.BaseRunner) (int64, error) {
 	rows.Next()
 	err = rows.Scan(&count)
 	if err != nil {
-		s.logger.Error("Failed to fetch workspace count", mlog.Err(err))
+		s.logger.Error("Failed to fetch team count", mlog.Err(err))
 		return 0, err
 	}
 	return count, nil
 }
 
-func (s *SQLStore) getUserWorkspaces(_ sq.BaseRunner, _ string) ([]model.UserWorkspace, error) {
-	return nil, fmt.Errorf("GetUserWorkspaces %w", errUnsupportedOperation)
+// ToDo: maybe remove
+func (s *SQLStore) getUserTeams(_ sq.BaseRunner, _ string) ([]model.UserTeam, error) {
+	return nil, fmt.Errorf("GetUserTeams %w", errUnsupportedOperation)
 }

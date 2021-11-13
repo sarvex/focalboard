@@ -82,7 +82,7 @@ func TestIsValidReadToken(t *testing.T) {
 
 	validBlockID := "testBlockID"
 	mockContainer := store.Container{
-		WorkspaceID: "testWorkspaceID",
+		TeamID: "testTeamID",
 	}
 	validReadToken := "testReadToken"
 	mockSharing := model.Sharing{

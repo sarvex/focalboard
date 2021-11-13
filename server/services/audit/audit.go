@@ -15,7 +15,7 @@ const (
 	KeyClient      = "client"
 	KeyIPAddress   = "ip_address"
 	KeyClusterID   = "cluster_id"
-	KeyWorkspaceID = "workspace_id"
+	KeyTeamID      = "team_id"
 
 	Success = "success"
 	Attempt = "attempt"

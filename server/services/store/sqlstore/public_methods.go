@@ -147,6 +147,16 @@ func (s *SQLStore) GetSystemSettings() (map[string]string, error) {
 
 }
 
+func (s *SQLStore) GetTeam(ID string) (*model.Team, error) {
+	return s.getTeam(s.db, ID)
+
+}
+
+func (s *SQLStore) GetTeamCount() (int64, error) {
+	return s.getTeamCount(s.db)
+
+}
+
 func (s *SQLStore) GetUserByEmail(email string) (*model.User, error) {
 	return s.getUserByEmail(s.db, email)
 
@@ -162,28 +172,18 @@ func (s *SQLStore) GetUserByUsername(username string) (*model.User, error) {
 
 }
 
-func (s *SQLStore) GetUserWorkspaces(userID string) ([]model.UserWorkspace, error) {
-	return s.getUserWorkspaces(s.db, userID)
+func (s *SQLStore) GetUserTeams(userID string) ([]model.UserTeam, error) {
+	return s.getUserTeams(s.db, userID)
 
 }
 
-func (s *SQLStore) GetUsersByWorkspace(workspaceID string) ([]*model.User, error) {
-	return s.getUsersByWorkspace(s.db, workspaceID)
+func (s *SQLStore) GetUsersByTeam(teamID string) ([]*model.User, error) {
+	return s.getUsersByTeam(s.db, teamID)
 
 }
 
-func (s *SQLStore) GetWorkspace(ID string) (*model.Workspace, error) {
-	return s.getWorkspace(s.db, ID)
-
-}
-
-func (s *SQLStore) GetWorkspaceCount() (int64, error) {
-	return s.getWorkspaceCount(s.db)
-
-}
-
-func (s *SQLStore) HasWorkspaceAccess(userID string, workspaceID string) (bool, error) {
-	return s.hasWorkspaceAccess(s.db, userID, workspaceID)
+func (s *SQLStore) HasTeamAccess(userID string, teamID string) (bool, error) {
+	return s.hasTeamAccess(s.db, userID, teamID)
 
 }
 
@@ -264,12 +264,12 @@ func (s *SQLStore) UpsertSharing(c store.Container, sharing model.Sharing) error
 
 }
 
-func (s *SQLStore) UpsertWorkspaceSettings(workspace model.Workspace) error {
-	return s.upsertWorkspaceSettings(s.db, workspace)
+func (s *SQLStore) UpsertTeamSettings(team model.Team) error {
+	return s.upsertTeamSettings(s.db, team)
 
 }
 
-func (s *SQLStore) UpsertWorkspaceSignupToken(workspace model.Workspace) error {
-	return s.upsertWorkspaceSignupToken(s.db, workspace)
+func (s *SQLStore) UpsertTeamSignupToken(team model.Team) error {
+	return s.upsertTeamSignupToken(s.db, team)
 
 }

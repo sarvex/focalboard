@@ -35,18 +35,18 @@ func (m *MockAuthInterface) EXPECT() *MockAuthInterfaceMockRecorder {
 	return m.recorder
 }
 
-// DoesUserHaveWorkspaceAccess mocks base method.
-func (m *MockAuthInterface) DoesUserHaveWorkspaceAccess(arg0, arg1 string) bool {
+// DoesUserHaveTeamAccess mocks base method.
+func (m *MockAuthInterface) DoesUserHaveTeamAccess(arg0, arg1 string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DoesUserHaveWorkspaceAccess", arg0, arg1)
+	ret := m.ctrl.Call(m, "DoesUserHaveTeamAccess", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// DoesUserHaveWorkspaceAccess indicates an expected call of DoesUserHaveWorkspaceAccess.
-func (mr *MockAuthInterfaceMockRecorder) DoesUserHaveWorkspaceAccess(arg0, arg1 interface{}) *gomock.Call {
+// DoesUserHaveTeamAccess indicates an expected call of DoesUserHaveTeamAccess.
+func (mr *MockAuthInterfaceMockRecorder) DoesUserHaveTeamAccess(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesUserHaveWorkspaceAccess", reflect.TypeOf((*MockAuthInterface)(nil).DoesUserHaveWorkspaceAccess), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoesUserHaveTeamAccess", reflect.TypeOf((*MockAuthInterface)(nil).DoesUserHaveTeamAccess), arg0, arg1)
 }
 
 // GetSession mocks base method.
