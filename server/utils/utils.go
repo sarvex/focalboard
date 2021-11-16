@@ -11,7 +11,7 @@ type IDType byte
 
 const (
 	IDTypeNone      IDType = '7'
-	IDTypeWorkspace IDType = 'w'
+	IDTypeTeam      IDType = 't'
 	IDTypeBoard     IDType = 'b'
 	IDTypeCard      IDType = 'c'
 	IDTypeView      IDType = 'v'

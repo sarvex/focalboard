@@ -60,7 +60,7 @@ func (s *SQLStore) isInitializationNeeded() (bool, error) {
 	query := s.getQueryBuilder(s.db).
 		Select("count(*)").
 		From(s.tablePrefix + "blocks").
-		Where(sq.Eq{"COALESCE(workspace_id, '0')": "0"})
+		Where(sq.Eq{"COALESCE(channel_id, '0')": "0"})
 
 	row := query.QueryRow()
 

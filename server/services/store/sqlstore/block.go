@@ -73,7 +73,7 @@ func (s *SQLStore) getBlocksWithParent(db sq.BaseRunner, c store.Container, pare
 		Select(s.blockFields()...).
 		From(s.tablePrefix + "blocks").
 		Where(sq.Eq{"parent_id": parentID}).
-		Where(sq.Eq{"coalesce(workspace_id, '0')": c.TeamID})
+		Where(sq.Eq{"coalesce(channel_id, '0')": c.TeamID})
 
 	rows, err := query.Query()
 	if err != nil {
@@ -91,7 +91,7 @@ func (s *SQLStore) getBlocksWithRootID(db sq.BaseRunner, c store.Container, root
 		Select(s.blockFields()...).
 		From(s.tablePrefix + "blocks").
 		Where(sq.Eq{"root_id": rootID}).
-		Where(sq.Eq{"coalesce(workspace_id, '0')": c.TeamID})
+		Where(sq.Eq{"coalesce(channel_id, '0')": c.TeamID})
 
 	rows, err := query.Query()
 	if err != nil {
@@ -109,7 +109,7 @@ func (s *SQLStore) getBlocksWithType(db sq.BaseRunner, c store.Container, blockT
 		Select(s.blockFields()...).
 		From(s.tablePrefix + "blocks").
 		Where(sq.Eq{"type": blockType}).
-		Where(sq.Eq{"coalesce(workspace_id, '0')": c.TeamID})
+		Where(sq.Eq{"coalesce(channel_id, '0')": c.TeamID})
 
 	rows, err := query.Query()
 	if err != nil {
@@ -128,7 +128,7 @@ func (s *SQLStore) getSubTree2(db sq.BaseRunner, c store.Container, blockID stri
 		Select(s.blockFields()...).
 		From(s.tablePrefix + "blocks").
 		Where(sq.Or{sq.Eq{"id": blockID}, sq.Eq{"parent_id": blockID}}).
-		Where(sq.Eq{"coalesce(workspace_id, '0')": c.TeamID})
+		Where(sq.Eq{"coalesce(channel_id, '0')": c.TeamID})
 
 	rows, err := query.Query()
 	if err != nil {
@@ -157,13 +157,13 @@ func (s *SQLStore) getSubTree3(db sq.BaseRunner, c store.Container, blockID stri
 		"l3.create_at",
 		"l3.update_at",
 		"l3.delete_at",
-		"COALESCE(l3.workspace_id, '0')",
+		"COALESCE(l3.channel_id, '0')",
 	).
 		From(s.tablePrefix + "blocks as l1").
 		Join(s.tablePrefix + "blocks as l2 on l2.parent_id = l1.id or l2.id = l1.id").
 		Join(s.tablePrefix + "blocks as l3 on l3.parent_id = l2.id or l3.id = l2.id").
 		Where(sq.Eq{"l1.id": blockID}).
-		Where(sq.Eq{"COALESCE(l3.workspace_id, '0')": c.TeamID})
+		Where(sq.Eq{"COALESCE(l3.channel_id, '0')": c.TeamID})
 
 	if s.dbType == postgresDBType {
 		query = query.Options("DISTINCT ON (l3.id)")
@@ -186,7 +186,7 @@ func (s *SQLStore) getAllBlocks(db sq.BaseRunner, c store.Container) ([]model.Bl
 	query := s.getQueryBuilder(db).
 		Select(s.blockFields()...).
 		From(s.tablePrefix + "blocks").
-		Where(sq.Eq{"coalesce(workspace_id, '0')": c.TeamID})
+		Where(sq.Eq{"coalesce(channel_id, '0')": c.TeamID})
 
 	rows, err := query.Query()
 	if err != nil {
@@ -250,7 +250,7 @@ func (s *SQLStore) getRootID(db sq.BaseRunner, c store.Container, blockID string
 	query := s.getQueryBuilder(db).Select("root_id").
 		From(s.tablePrefix + "blocks").
 		Where(sq.Eq{"id": blockID}).
-		Where(sq.Eq{"coalesce(workspace_id, '0')": c.TeamID})
+		Where(sq.Eq{"coalesce(channel_id, '0')": c.TeamID})
 
 	row := query.QueryRow()
 
@@ -268,7 +268,7 @@ func (s *SQLStore) getParentID(db sq.BaseRunner, c store.Container, blockID stri
 	query := s.getQueryBuilder(db).Select("parent_id").
 		From(s.tablePrefix + "blocks").
 		Where(sq.Eq{"id": blockID}).
-		Where(sq.Eq{"coalesce(workspace_id, '0')": c.TeamID})
+		Where(sq.Eq{"coalesce(channel_id, '0')": c.TeamID})
 
 	row := query.QueryRow()
 
@@ -299,7 +299,7 @@ func (s *SQLStore) insertBlock(db sq.BaseRunner, c store.Container, block *model
 
 	insertQuery := s.getQueryBuilder(db).Insert("").
 		Columns(
-			"workspace_id",
+			"channel_id",
 			"id",
 			"parent_id",
 			"root_id",
@@ -315,7 +315,7 @@ func (s *SQLStore) insertBlock(db sq.BaseRunner, c store.Container, block *model
 		)
 
 	insertQueryValues := map[string]interface{}{
-		"workspace_id":          c.TeamID,
+		"channel_id":          c.TeamID,
 		"id":                    block.ID,
 		"parent_id":             block.ParentID,
 		"root_id":               block.RootID,
@@ -337,7 +337,7 @@ func (s *SQLStore) insertBlock(db sq.BaseRunner, c store.Container, block *model
 		// block with ID exists, so this is an update operation
 		query := s.getQueryBuilder(db).Update(s.tablePrefix+"blocks").
 			Where(sq.Eq{"id": block.ID}).
-			Where(sq.Eq{"COALESCE(workspace_id, '0')": c.TeamID}).
+			Where(sq.Eq{"COALESCE(channel_id, '0')": c.TeamID}).
 			Set("parent_id", block.ParentID).
 			Set("root_id", block.RootID).
 			Set("modified_by", block.ModifiedBy).
@@ -395,7 +395,7 @@ func (s *SQLStore) deleteBlock(db sq.BaseRunner, c store.Container, blockID stri
 	now := utils.GetMillis()
 	insertQuery := s.getQueryBuilder(db).Insert(s.tablePrefix+"blocks_history").
 		Columns(
-			"workspace_id",
+			"channel_id",
 			"id",
 			"modified_by",
 			"update_at",
@@ -416,7 +416,7 @@ func (s *SQLStore) deleteBlock(db sq.BaseRunner, c store.Container, blockID stri
 	deleteQuery := s.getQueryBuilder(db).
 		Delete(s.tablePrefix + "blocks").
 		Where(sq.Eq{"id": blockID}).
-		Where(sq.Eq{"COALESCE(workspace_id, '0')": c.TeamID})
+		Where(sq.Eq{"COALESCE(channel_id, '0')": c.TeamID})
 
 	if _, err := deleteQuery.Exec(); err != nil {
 		return err
@@ -463,7 +463,7 @@ func (s *SQLStore) getBlock(db sq.BaseRunner, c store.Container, blockID string)
 		Select(s.blockFields()...).
 		From(s.tablePrefix + "blocks").
 		Where(sq.Eq{"id": blockID}).
-		Where(sq.Eq{"coalesce(workspace_id, '0')": c.TeamID})
+		Where(sq.Eq{"coalesce(channel_id, '0')": c.TeamID})
 
 	rows, err := query.Query()
 	if err != nil {

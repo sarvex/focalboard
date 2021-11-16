@@ -13,6 +13,7 @@ import (
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 )
 
+// ToDo: teamID instead of workspace
 func (a *App) SaveFile(reader io.Reader, workspaceID, rootID, filename string) (string, error) {
 	// NOTE: File extension includes the dot
 	fileExtension := strings.ToLower(filepath.Ext(filename))
@@ -31,6 +32,8 @@ func (a *App) SaveFile(reader io.Reader, workspaceID, rootID, filename string) (
 	return createdFilename, nil
 }
 
+// ToDo: teamID instead of workspace
+// ToDo: do we need to do something to the file blocks?
 func (a *App) GetFileReader(workspaceID, rootID, filename string) (filestore.ReadCloseSeeker, error) {
 	filePath := filepath.Join(workspaceID, rootID, filename)
 	exists, err := a.filesBackend.FileExists(filePath)

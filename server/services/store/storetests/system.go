@@ -26,7 +26,7 @@ func addBaseSettings(m map[string]string) map[string]string {
 
 func StoreTestSystemStore(t *testing.T, setup func(t *testing.T) (store.Store, func())) {
 	container := store.Container{
-		WorkspaceID: "0",
+		TeamID: "0",
 	}
 
 	t.Run("SetGetSystemSettings", func(t *testing.T) {
